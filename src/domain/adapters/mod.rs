@@ -1,4 +1,5 @@
 pub mod aave_savings;
+pub mod liquid_staking;
 pub mod sovereign_bond;
 
 use async_trait::async_trait;
