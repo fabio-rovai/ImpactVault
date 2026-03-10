@@ -71,6 +71,13 @@ pub struct PatternListInput {
     pub category: Option<String>,
 }
 
+// Vault
+#[derive(Deserialize, JsonSchema)]
+pub struct AdapterHealthInput {
+    /// Adapter name to check health for
+    pub adapter_name: String,
+}
+
 // ─── ImpactVaultServer ──────────────────────────────────────────────────────
 
 /// MCP server that exposes all ImpactVault tools to Claude via stdin/stdout.
@@ -225,6 +232,88 @@ impl ImpactVaultServer {
             Ok(patterns) => serde_json::to_string(&patterns).unwrap_or_default(),
             Err(e) => format!(r#"{{"error":"{}"}}"#, e),
         }
+    }
+
+    // ── Vault ──────────────────────────────────────────────────────────────
+
+    #[tool(name = "vault_status", description = "Returns a JSON summary of the current vault status")]
+    fn vault_status(&self) -> String {
+        serde_json::json!({
+            "status": "ok",
+            "tvl": 0,
+            "adapters_active": 0,
+            "risk_level": "low",
+            "message": "vault not yet wired — placeholder"
+        })
+        .to_string()
+    }
+
+    #[tool(name = "vault_risk", description = "Returns a risk assessment for the vault")]
+    fn vault_risk(&self) -> String {
+        serde_json::json!({
+            "overall_risk": "low",
+            "components": {
+                "market_risk": "low",
+                "smart_contract_risk": "medium",
+                "counterparty_risk": "low"
+            },
+            "message": "risk assessment not yet wired — placeholder"
+        })
+        .to_string()
+    }
+
+    // ── Adapters ───────────────────────────────────────────────────────────
+
+    #[tool(name = "adapter_list", description = "Returns list of adapter names and their risk positions")]
+    fn adapter_list(&self) -> String {
+        serde_json::json!({
+            "adapters": [
+                {"name": "sovereign_bond", "risk_position": "Sovereign"},
+                {"name": "aave_savings", "risk_position": "StablecoinSavings"}
+            ]
+        })
+        .to_string()
+    }
+
+    #[tool(name = "adapter_health", description = "Returns health status for a specific adapter")]
+    async fn adapter_health(&self, Parameters(input): Parameters<AdapterHealthInput>) -> String {
+        serde_json::json!({
+            "adapter": input.adapter_name,
+            "healthy": true,
+            "last_check": chrono::Utc::now().to_rfc3339(),
+            "message": "adapter health not yet wired — placeholder"
+        })
+        .to_string()
+    }
+
+    // ── Sentinel ───────────────────────────────────────────────────────────
+
+    #[tool(name = "sentinel_status", description = "Returns sentinel monitoring status")]
+    fn sentinel_status(&self) -> String {
+        serde_json::json!({
+            "running": false,
+            "checks_completed": 0,
+            "last_check": null,
+            "message": "sentinel not yet wired — placeholder"
+        })
+        .to_string()
+    }
+
+    // ── Risk ───────────────────────────────────────────────────────────────
+
+    #[tool(name = "risk_evaluate", description = "Runs risk evaluation on demand")]
+    fn risk_evaluate(&self) -> String {
+        serde_json::json!({
+            "evaluation": "pass",
+            "risk_score": 0.15,
+            "timestamp": chrono::Utc::now().to_rfc3339(),
+            "details": {
+                "adapters_checked": 0,
+                "alerts": []
+            },
+            "message": "risk evaluation not yet wired — placeholder"
+        })
+        .to_string()
     }
 
 }

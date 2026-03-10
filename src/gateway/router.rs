@@ -10,6 +10,14 @@ pub fn route_tool(name: &str) -> &'static str {
         "orchestration::enforcer"
     } else if name.starts_with("pattern_") {
         "orchestration::patterns"
+    } else if name.starts_with("vault_") {
+        "domain::vault"
+    } else if name.starts_with("adapter_") {
+        "domain::adapter"
+    } else if name.starts_with("sentinel_") {
+        "orchestration::sentinel"
+    } else if name.starts_with("risk_") {
+        "domain::risk"
     } else {
         "unknown"
     }
@@ -24,6 +32,10 @@ mod tests {
         assert_eq!(route_tool("lineage_track"), "orchestration::lineage");
         assert_eq!(route_tool("enforcer_check"), "orchestration::enforcer");
         assert_eq!(route_tool("pattern_analyze"), "orchestration::patterns");
+        assert_eq!(route_tool("vault_status"), "domain::vault");
+        assert_eq!(route_tool("adapter_list"), "domain::adapter");
+        assert_eq!(route_tool("sentinel_status"), "orchestration::sentinel");
+        assert_eq!(route_tool("risk_evaluate"), "domain::risk");
         assert_eq!(route_tool("unknown_tool"), "unknown");
     }
 }

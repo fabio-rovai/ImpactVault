@@ -1,3 +1,4 @@
+pub mod api;
 pub mod server;
 pub mod router;
 pub mod proxy;

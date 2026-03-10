@@ -47,16 +47,30 @@ fn test_server_has_core_tools() {
     // Patterns
     assert!(names.contains(&"pattern_analyze"), "Missing pattern_analyze");
     assert!(names.contains(&"pattern_list"), "Missing pattern_list");
+
+    // Vault
+    assert!(names.contains(&"vault_status"), "Missing vault_status");
+    assert!(names.contains(&"vault_risk"), "Missing vault_risk");
+
+    // Adapters
+    assert!(names.contains(&"adapter_list"), "Missing adapter_list");
+    assert!(names.contains(&"adapter_health"), "Missing adapter_health");
+
+    // Sentinel
+    assert!(names.contains(&"sentinel_status"), "Missing sentinel_status");
+
+    // Risk
+    assert!(names.contains(&"risk_evaluate"), "Missing risk_evaluate");
 }
 
 #[test]
 fn test_server_tool_count() {
     let (_dir, server) = setup();
     let tools = server.list_tool_definitions();
-    // 3 lineage + 4 enforcer + 2 patterns = 9
+    // 3 lineage + 4 enforcer + 2 patterns + 2 vault + 2 adapter + 1 sentinel + 1 risk = 15
     assert_eq!(
-        tools.len(), 9,
-        "Expected 9 tools, found: {}",
+        tools.len(), 15,
+        "Expected 15 tools, found: {}",
         tools.len()
     );
 }
