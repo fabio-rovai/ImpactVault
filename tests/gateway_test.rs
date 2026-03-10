@@ -61,16 +61,22 @@ fn test_server_has_core_tools() {
 
     // Risk
     assert!(names.contains(&"risk_evaluate"), "Missing risk_evaluate");
+
+    // DPGA
+    assert!(names.contains(&"dpga_list"), "Missing dpga_list");
+
+    // Rebalance (under vault_ prefix)
+    assert!(names.contains(&"vault_rebalance"), "Missing vault_rebalance");
 }
 
 #[test]
 fn test_server_tool_count() {
     let (_dir, server) = setup();
     let tools = server.list_tool_definitions();
-    // 3 lineage + 4 enforcer + 2 patterns + 2 vault + 2 adapter + 1 sentinel + 1 risk = 15
+    // 3 lineage + 4 enforcer + 2 patterns + 3 vault + 2 adapter + 1 sentinel + 1 risk + 1 dpga = 17
     assert_eq!(
-        tools.len(), 15,
-        "Expected 15 tools, found: {}",
+        tools.len(), 17,
+        "Expected 17 tools, found: {}",
         tools.len()
     );
 }

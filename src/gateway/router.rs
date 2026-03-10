@@ -18,6 +18,8 @@ pub fn route_tool(name: &str) -> &'static str {
         "orchestration::sentinel"
     } else if name.starts_with("risk_") {
         "domain::risk"
+    } else if name.starts_with("dpga_") {
+        "domain::dpga"
     } else {
         "unknown"
     }
@@ -36,6 +38,8 @@ mod tests {
         assert_eq!(route_tool("adapter_list"), "domain::adapter");
         assert_eq!(route_tool("sentinel_status"), "orchestration::sentinel");
         assert_eq!(route_tool("risk_evaluate"), "domain::risk");
+        assert_eq!(route_tool("dpga_list"), "domain::dpga");
+        assert_eq!(route_tool("vault_rebalance"), "domain::vault");
         assert_eq!(route_tool("unknown_tool"), "unknown");
     }
 }

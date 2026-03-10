@@ -286,6 +286,78 @@ impl ImpactVaultServer {
         .to_string()
     }
 
+    // ── DPGA ───────────────────────────────────────────────────────────────
+
+    #[tool(name = "dpga_list", description = "List Digital Public Goods eligible for yield disbursements")]
+    fn dpga_list(&self) -> String {
+        use crate::domain::dpga::{DpgEntry, suggest_recipients};
+        let sample_dpgs = vec![
+            DpgEntry {
+                name: "DHIS2".into(),
+                description: "Health management information system".into(),
+                website: "https://dhis2.org".into(),
+                repositories: vec!["https://github.com/dhis2/dhis2-core".into()],
+                stage: "DPG".into(),
+                wallet_address: Some("0x1234...abcd".into()),
+            },
+            DpgEntry {
+                name: "OpenMRS".into(),
+                description: "Open-source medical record system".into(),
+                website: "https://openmrs.org".into(),
+                repositories: vec!["https://github.com/openmrs/openmrs-core".into()],
+                stage: "DPG".into(),
+                wallet_address: Some("0x5678...efgh".into()),
+            },
+            DpgEntry {
+                name: "Moodle".into(),
+                description: "Open-source learning platform".into(),
+                website: "https://moodle.org".into(),
+                repositories: vec!["https://github.com/moodle/moodle".into()],
+                stage: "DPG".into(),
+                wallet_address: None,
+            },
+        ];
+        let eligible = suggest_recipients(&sample_dpgs);
+        serde_json::json!({
+            "total": sample_dpgs.len(),
+            "eligible_for_disbursement": eligible.len(),
+            "recipients": eligible,
+        })
+        .to_string()
+    }
+
+    // ── Rebalance ─────────────────────────────────────────────────────────
+
+    #[tool(name = "vault_rebalance", description = "Check if portfolio needs rebalancing based on drift from target weights")]
+    fn vault_rebalance(&self) -> String {
+        use crate::domain::engine::{
+            check_rebalance, Allocation, Portfolio, RiskSpectrum, VaultConfig,
+        };
+        let mut config = VaultConfig::default();
+        config.approved_sources = vec![
+            RiskSpectrum::Sovereign,
+            RiskSpectrum::StablecoinSavings,
+        ];
+        config.source_weights.insert(RiskSpectrum::Sovereign, 60);
+        config.source_weights.insert(RiskSpectrum::StablecoinSavings, 40);
+
+        let portfolio = Portfolio::from_allocations(vec![
+            Allocation {
+                source: RiskSpectrum::Sovereign,
+                adapter_name: "sovereign_bond".into(),
+                amount: 700_000,
+            },
+            Allocation {
+                source: RiskSpectrum::StablecoinSavings,
+                adapter_name: "aave_savings".into(),
+                amount: 300_000,
+            },
+        ]);
+
+        let result = check_rebalance(&config, &portfolio, 5);
+        serde_json::to_string(&result).unwrap_or_default()
+    }
+
     // ── Sentinel ───────────────────────────────────────────────────────────
 
     #[tool(name = "sentinel_status", description = "Returns sentinel monitoring status")]
