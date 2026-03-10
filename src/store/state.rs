@@ -8,6 +8,7 @@ const MIGRATION: &str = include_str!("migrations/001_initial.sql");
 const MIGRATION_002: &str = include_str!("migrations/002_ontology_versions.sql");
 const MIGRATION_003: &str = include_str!("migrations/003_domain_locks.sql");
 const MIGRATION_004: &str = include_str!("migrations/004_vault_state.sql");
+const MIGRATION_005: &str = include_str!("migrations/005_yield_history.sql");
 
 /// SQLite-backed state store.
 ///
@@ -43,6 +44,7 @@ impl StateDb {
         conn.execute_batch(MIGRATION_002)?;
         conn.execute_batch(MIGRATION_003)?;
         conn.execute_batch(MIGRATION_004)?;
+        conn.execute_batch(MIGRATION_005)?;
 
         Ok(Self {
             conn: Arc::new(Mutex::new(conn)),
