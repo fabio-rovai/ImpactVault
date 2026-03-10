@@ -1,4 +1,5 @@
 pub mod aave_savings;
+pub mod compound_lending;
 pub mod liquid_staking;
 pub mod sovereign_bond;
 
