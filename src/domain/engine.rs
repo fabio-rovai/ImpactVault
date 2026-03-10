@@ -190,25 +190,62 @@ pub fn recommend_allocation(config: &VaultConfig, deposit_amount: u128) -> Alloc
     }
 
     let max_per_source = deposit_amount * config.concentration_limit as u128 / 100;
-    let mut remaining = deposit_amount;
+
+    // Check if we have valid weights (all sources present and sum to 100)
+    let weights_valid = {
+        let all_present = sources.iter().all(|s| config.source_weights.contains_key(s));
+        let sum: u16 = sources
+            .iter()
+            .filter_map(|s| config.source_weights.get(s))
+            .map(|&w| w as u16)
+            .sum();
+        all_present && sum == 100
+    };
+
     let mut allocations = Vec::new();
 
-    for &source in sources {
-        if remaining == 0 {
-            break;
-        }
-        let amount = remaining.min(max_per_source);
-        allocations.push(Allocation {
-            source,
-            adapter_name: adapter_name_for(source),
-            amount,
-        });
-        remaining -= amount;
-    }
+    if weights_valid {
+        // Weighted allocation: allocate by weight percentage, cap at concentration_limit
+        let mut allocated = 0u128;
+        let last_idx = sources.len() - 1;
 
-    if remaining > 0 {
-        if let Some(first) = allocations.first_mut() {
-            first.amount += remaining;
+        for (i, &source) in sources.iter().enumerate() {
+            let amount = if i == last_idx {
+                // Last source gets remainder to avoid rounding dust
+                deposit_amount - allocated
+            } else {
+                let weight = *config.source_weights.get(&source).unwrap() as u128;
+                let raw = deposit_amount * weight / 100;
+                raw.min(max_per_source)
+            };
+            let amount = amount.min(max_per_source);
+            allocations.push(Allocation {
+                source,
+                adapter_name: adapter_name_for(source),
+                amount,
+            });
+            allocated += amount;
+        }
+    } else {
+        // Equal split fallback (backward compatible)
+        let n = sources.len() as u128;
+        let base = deposit_amount / n;
+        let mut allocated = 0u128;
+        let last_idx = sources.len() - 1;
+
+        for (i, &source) in sources.iter().enumerate() {
+            let amount = if i == last_idx {
+                deposit_amount - allocated
+            } else {
+                base.min(max_per_source)
+            };
+            let amount = amount.min(max_per_source);
+            allocations.push(Allocation {
+                source,
+                adapter_name: adapter_name_for(source),
+                amount,
+            });
+            allocated += amount;
         }
     }
 

@@ -219,6 +219,65 @@ fn test_recommend_allocation_two_sources_respects_concentration() {
     assert_eq!(total, 1_000_000);
 }
 
+#[test]
+fn test_weighted_allocation_three_sources() {
+    let mut weights = HashMap::new();
+    weights.insert(RiskSpectrum::Sovereign, 50);
+    weights.insert(RiskSpectrum::StablecoinSavings, 30);
+    weights.insert(RiskSpectrum::LiquidStaking, 20);
+    let config = VaultConfig {
+        approved_sources: vec![
+            RiskSpectrum::Sovereign,
+            RiskSpectrum::StablecoinSavings,
+            RiskSpectrum::LiquidStaking,
+        ],
+        source_weights: weights,
+        concentration_limit: 80,
+        ..VaultConfig::default()
+    };
+    let plan = recommend_allocation(&config, 10_000);
+    assert_eq!(plan.allocations.len(), 3);
+    let sov = plan.allocations.iter().find(|a| a.adapter_name == "sovereign_bond").unwrap();
+    let aave = plan.allocations.iter().find(|a| a.adapter_name == "aave_savings").unwrap();
+    let lido = plan.allocations.iter().find(|a| a.adapter_name == "liquid_staking").unwrap();
+    assert_eq!(sov.amount, 5_000);
+    assert_eq!(aave.amount, 3_000);
+    assert_eq!(lido.amount, 2_000);
+}
+
+#[test]
+fn test_weighted_allocation_falls_back_to_equal_split_without_weights() {
+    let config = VaultConfig {
+        approved_sources: vec![
+            RiskSpectrum::Sovereign,
+            RiskSpectrum::StablecoinSavings,
+            RiskSpectrum::LiquidStaking,
+        ],
+        concentration_limit: 80,
+        ..VaultConfig::default()
+    };
+    let plan = recommend_allocation(&config, 9_000);
+    for alloc in &plan.allocations {
+        assert_eq!(alloc.amount, 3_000);
+    }
+}
+
+#[test]
+fn test_weighted_allocation_respects_concentration_limit() {
+    let mut weights = HashMap::new();
+    weights.insert(RiskSpectrum::Sovereign, 90);
+    weights.insert(RiskSpectrum::StablecoinSavings, 10);
+    let config = VaultConfig {
+        approved_sources: vec![RiskSpectrum::Sovereign, RiskSpectrum::StablecoinSavings],
+        source_weights: weights,
+        concentration_limit: 80,
+        ..VaultConfig::default()
+    };
+    let plan = recommend_allocation(&config, 10_000);
+    let sov = plan.allocations.iter().find(|a| a.adapter_name == "sovereign_bond").unwrap();
+    assert!(sov.amount <= 8_000);
+}
+
 // --- Task 6: Derisking tests ---
 
 #[test]
