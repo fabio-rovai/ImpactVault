@@ -1,0 +1,18 @@
+# ImpactVault Configuration
+# Copy this file to ~/.impactvault/config.toml and adjust as needed.
+# All values shown are the defaults -- uncomment and change only what you need.
+
+[general]
+# Base directory for ImpactVault data (database, etc.)
+# data_dir = "~/.impactvault"
+
+[enforcer]
+# Whether the policy enforcer is active
+# enabled = true
+
+# Default action when no policy matches: "block" or "allow"
+# default_action = "block"
+
+[lineage]
+# Port for the lineage tracking HTTP API (0 = auto-assign)
+# http_port = 0
