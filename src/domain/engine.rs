@@ -1,10 +1,12 @@
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub enum RiskSpectrum {
     Sovereign,
     StablecoinSavings,
-    // Future: LiquidStaking, DiversifiedLending, MultiStrategy
+    LiquidStaking,
+    DiversifiedLending,
+    MultiStrategy,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -214,6 +216,9 @@ fn adapter_name_for(spectrum: RiskSpectrum) -> String {
     match spectrum {
         RiskSpectrum::Sovereign => "sovereign_bond".into(),
         RiskSpectrum::StablecoinSavings => "aave_savings".into(),
+        RiskSpectrum::LiquidStaking => "liquid_staking".into(),
+        RiskSpectrum::DiversifiedLending => "compound_lending".into(),
+        RiskSpectrum::MultiStrategy => "multi_strategy".into(),
     }
 }
 

@@ -8,6 +8,14 @@ fn test_risk_spectrum_ordering() {
 }
 
 #[test]
+fn test_risk_spectrum_extended_ordering() {
+    assert!(RiskSpectrum::Sovereign < RiskSpectrum::StablecoinSavings);
+    assert!(RiskSpectrum::StablecoinSavings < RiskSpectrum::LiquidStaking);
+    assert!(RiskSpectrum::LiquidStaking < RiskSpectrum::DiversifiedLending);
+    assert!(RiskSpectrum::DiversifiedLending < RiskSpectrum::MultiStrategy);
+}
+
+#[test]
 fn test_vault_config_default_has_safe_limits() {
     let config = VaultConfig::default();
     assert!(config.max_exposure_per_source <= 100);
