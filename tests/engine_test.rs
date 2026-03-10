@@ -409,3 +409,95 @@ fn test_should_derisk_disabled_always_hold() {
         "auto_derisk disabled must always return Hold regardless of health"
     );
 }
+
+// --- Task 22: Full Pipeline Integration Test ---
+
+#[test]
+fn test_full_pipeline_multi_strategy() {
+    // 1. Configure vault with 3 sources and weights (40/35/25)
+    let mut weights = HashMap::new();
+    weights.insert(RiskSpectrum::Sovereign, 40);
+    weights.insert(RiskSpectrum::StablecoinSavings, 35);
+    weights.insert(RiskSpectrum::LiquidStaking, 25);
+
+    let config = VaultConfig {
+        approved_sources: vec![
+            RiskSpectrum::Sovereign,
+            RiskSpectrum::StablecoinSavings,
+            RiskSpectrum::LiquidStaking,
+        ],
+        source_weights: weights,
+        concentration_limit: 80,
+        derisking_health_threshold: 0.5,
+        auto_derisk_enabled: true,
+        ..VaultConfig::default()
+    };
+
+    // 2. Allocate 100,000
+    let plan = recommend_allocation(&config, 100_000);
+    assert_eq!(plan.allocations.len(), 3);
+    let total: u128 = plan.allocations.iter().map(|a| a.amount).sum();
+    assert_eq!(total, 100_000);
+
+    // 3. Build portfolio from allocation
+    let portfolio = Portfolio::from_allocations(plan.allocations.clone());
+
+    // 4. Check no rebalance needed (fresh allocation matches weights)
+    let rebal = check_rebalance(&config, &portfolio, 10);
+    assert!(!rebal.needs_rebalance);
+
+    // 5. Simulate drift
+    let mut drifted = Portfolio::new();
+    drifted.total_deposited = 100_000;
+    drifted.allocations = vec![
+        Allocation {
+            adapter_name: "sovereign_bond".into(),
+            amount: 60_000,
+            source: RiskSpectrum::Sovereign,
+        },
+        Allocation {
+            adapter_name: "aave_savings".into(),
+            amount: 30_000,
+            source: RiskSpectrum::StablecoinSavings,
+        },
+        Allocation {
+            adapter_name: "liquid_staking".into(),
+            amount: 10_000,
+            source: RiskSpectrum::LiquidStaking,
+        },
+    ];
+    let rebal = check_rebalance(&config, &drifted, 10);
+    assert!(rebal.needs_rebalance);
+
+    // 6. Risk evaluation with healthy adapters
+    let health_data = vec![
+        HealthStatus {
+            adapter_name: "sovereign_bond".into(),
+            score: 0.95,
+            oracle_fresh: true,
+            liquidity_adequate: true,
+            utilisation_rate: 0.0,
+            details: "healthy".into(),
+        },
+        HealthStatus {
+            adapter_name: "aave_savings".into(),
+            score: 0.85,
+            oracle_fresh: true,
+            liquidity_adequate: true,
+            utilisation_rate: 0.72,
+            details: "healthy".into(),
+        },
+        HealthStatus {
+            adapter_name: "liquid_staking".into(),
+            score: 0.88,
+            oracle_fresh: true,
+            liquidity_adequate: true,
+            utilisation_rate: 0.0,
+            details: "healthy".into(),
+        },
+    ];
+
+    let assessment = evaluate_risk(&config, &portfolio, &health_data);
+    assert!(assessment.breaches.is_empty());
+    assert!(matches!(assessment.recommended_action, DeriskAction::Hold));
+}
