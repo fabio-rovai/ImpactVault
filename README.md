@@ -618,49 +618,82 @@ cd dashboard && npx next build
 
 ## Project Structure by Layer
 
-```text
-┌─────────────────────────────────────────────────────────────┐
-│                    Dashboard (Next.js)                       │
-│  Port 3001 — Overview, Adapters, Risk, Disbursements        │
-└──────────────────────────┬──────────────────────────────────┘
-                           │ HTTP (fetch)
-┌──────────────────────────▼──────────────────────────────────┐
-│                    REST API (Axum)                           │
-│  Port 3000 — /health, /adapters, /vault, /risk, /sentinel   │
-└──────────────────────────┬──────────────────────────────────┘
-                           │
-┌──────────────────────────▼──────────────────────────────────┐
-│                  MCP Server (rmcp)                           │
-│  stdio — 19 tools for Claude Code / MCP clients             │
-├─────────────┬───────────────┬───────────────┬───────────────┤
-│  Enforcer   │   Lineage     │   Patterns    │   Router      │
-│  (risk      │   (audit      │   (anomaly    │   (prefix     │
-│   rules)    │    trail)     │    detection) │    dispatch)  │
-└─────────────┴───────┬───────┴───────────────┴───────────────┘
-                      │
-┌─────────────────────▼───────────────────────────────────────┐
-│                  Domain Layer                                │
-├──────────────┬──────────────┬───────────────┬───────────────┤
-│   Engine     │  Sentinel    │   Adapters    │    DPGA       │
-│  (risk eval, │  (health     │  (yield       │  (Digital     │
-│   allocate,  │   monitor,   │   sources,    │   Public      │
-│   derisk,    │   auto-      │   calldata    │   Goods)      │
-│   rebalance) │   derisk)    │   generation) │               │
-└──────────────┴──────────────┴───────┬───────┴───────────────┘
-                                      │ ABI calldata
-┌─────────────────────────────────────▼───────────────────────┐
-│                  Smart Contracts (Solidity)                  │
-├──────────────┬──────────────┬───────────────┬───────────────┤
-│ ImpactVault  │ YieldSplitter│ ImpactMultisig│ MockRWAVault  │
-│ (ERC-4626)   │ (distribute) │ (governance)  │ (testnet)     │
-└──────────────┴──────────────┴───────────────┴───────────────┘
-                      │
-┌─────────────────────▼───────────────────────────────────────┐
-│                  SQLite (WAL mode)                           │
-│  ~/.impactvault/impactvault.db                              │
-│  5 migrations, FTS5 full-text search                        │
-└─────────────────────────────────────────────────────────────┘
+![Architecture](docs/mockups/architecture.png)
+
+<details>
+<summary>Mermaid source</summary>
+
+```mermaid
+graph TD
+    subgraph Dashboard["Dashboard (Next.js) — Port 3001"]
+        D1["Overview Page<br/>TVL, Yield Chart, Allocation Pie"]
+        D2["Adapters Page<br/>Health-scored Cards"]
+        D3["Risk Page<br/>Sentinel Status, Enforcer Rules"]
+        D4["Disbursements Page<br/>Transaction History"]
+    end
+
+    subgraph API["REST API (Axum) — Port 3000"]
+        A1["/health"]
+        A2["/adapters · /adapters/{name}/health"]
+        A3["/vault/{id}/status · /vault/{id}/risk"]
+        A4["/sentinel/status · /risk/assessment"]
+        A5["/yield/history · /disbursements"]
+    end
+
+    subgraph MCP["MCP Server (rmcp) — stdio"]
+        M1["vault_status · vault_risk · vault_rebalance"]
+        M2["adapter_list · adapter_health"]
+        M3["sentinel_status · risk_evaluate · dpga_list"]
+        M4["enforcer_check · enforcer_rules · enforcer_toggle_rule"]
+        M5["lineage_record · lineage_events · lineage_timeline"]
+        M6["pattern_analyze · pattern_list"]
+    end
+
+    subgraph Orchestration["Orchestration Layer (from OpenCheir)"]
+        O1["Enforcer<br/>Risk Rules Engine<br/>Block / Warn actions"]
+        O2["Lineage<br/>Immutable Audit Trail"]
+        O3["Patterns<br/>Anomaly Detection"]
+        O4["Router<br/>Prefix-based Dispatch"]
+    end
+
+    subgraph Domain["Domain Layer"]
+        E["Engine<br/>Risk Evaluation · Allocation<br/>Derisking · Rebalance"]
+        S["Sentinel<br/>Async Health Monitor<br/>Auto-derisk Loop"]
+        DPGA["DPGA<br/>Digital Public Goods<br/>Registry"]
+        subgraph Adapters["Yield Adapters"]
+            AD1["Sovereign Bond<br/>ERC-4626 · ~4.5% APY"]
+            AD2["Aave Savings<br/>V3 Pool · ~3.2% APY"]
+            AD3["Liquid Staking<br/>Lido wstETH · ~3.5% APY"]
+            AD4["Compound Lending<br/>V3 Comet · ~3.2% APY"]
+        end
+    end
+
+    subgraph Contracts["Smart Contracts (Solidity / Foundry)"]
+        C1["ImpactVault<br/>ERC-4626 Vault<br/>Whitelisting + Timelock"]
+        C2["YieldSplitter<br/>Distribute by<br/>Basis Points"]
+        C3["ImpactMultisig<br/>N-of-M Governance<br/>2-day Timelock"]
+        C4["MockRWAVault<br/>Testnet Simulation"]
+    end
+
+    subgraph Store["SQLite (WAL mode)"]
+        DB1["vaults · adapter_health_log"]
+        DB2["disbursements · risk_events"]
+        DB3["yield_snapshots · governance_proposals"]
+        DB4["events · rules · enforcement · patterns"]
+    end
+
+    Dashboard -->|"HTTP fetch<br/>30s polling"| API
+    API --> MCP
+    MCP --> Orchestration
+    MCP --> Domain
+    Orchestration --> Store
+    Domain --> Store
+    S -->|"health_check()"| Adapters
+    E -->|"evaluate_risk()"| Adapters
+    Adapters -->|"ABI calldata"| Contracts
 ```
+
+</details>
 
 ---
 
