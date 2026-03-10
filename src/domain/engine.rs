@@ -51,6 +51,11 @@ impl Portfolio {
         Self::default()
     }
 
+    pub fn from_allocations(allocations: Vec<Allocation>) -> Self {
+        let total = allocations.iter().map(|a| a.amount).sum();
+        Self { allocations, total_deposited: total }
+    }
+
     pub fn total_deposited(&self) -> u128 {
         self.total_deposited
     }
@@ -337,7 +342,7 @@ pub fn check_rebalance(
             .filter(|a| a.source == source)
             .map(|a| a.amount)
             .sum();
-        let actual_pct = (actual_amount as f64 / total as f64 * 100.0) as u8;
+        let actual_pct = ((actual_amount * 100) / total) as u8;
         let drift = actual_pct as i16 - target_pct as i16;
 
         if drift.unsigned_abs() > drift_threshold_pct as u16 {
