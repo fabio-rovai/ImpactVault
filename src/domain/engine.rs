@@ -42,7 +42,8 @@ pub struct Allocation {
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct Portfolio {
-    allocations: Vec<Allocation>,
+    pub allocations: Vec<Allocation>,
+    pub total_deposited: u128,
 }
 
 impl Portfolio {
@@ -51,7 +52,7 @@ impl Portfolio {
     }
 
     pub fn total_deposited(&self) -> u128 {
-        self.allocations.iter().map(|a| a.amount).sum()
+        self.total_deposited
     }
 
     pub fn allocations(&self) -> &[Allocation] {
@@ -59,6 +60,7 @@ impl Portfolio {
     }
 
     pub fn add_allocation(&mut self, alloc: Allocation) {
+        self.total_deposited += alloc.amount;
         self.allocations.push(alloc);
     }
 }
@@ -290,5 +292,81 @@ pub fn should_derisk(config: &VaultConfig, health_data: &[HealthStatus]) -> Deri
             from: worst_adapter,
             to: RiskSpectrum::Sovereign,
         }
+    }
+}
+
+// --- Rebalance Drift Detection ---
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DriftInfo {
+    pub adapter_name: String,
+    pub target_pct: u8,
+    pub actual_pct: u8,
+    pub drift_pct: i16,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct RebalanceRecommendation {
+    pub needs_rebalance: bool,
+    pub drifts: Vec<DriftInfo>,
+    pub reasoning: String,
+}
+
+pub fn check_rebalance(
+    config: &VaultConfig,
+    portfolio: &Portfolio,
+    drift_threshold_pct: u8,
+) -> RebalanceRecommendation {
+    let total = portfolio.total_deposited;
+    if total == 0 || config.source_weights.is_empty() {
+        return RebalanceRecommendation {
+            needs_rebalance: false,
+            drifts: vec![],
+            reasoning: "No deposits or no target weights configured".into(),
+        };
+    }
+
+    let mut drifts = Vec::new();
+    let mut needs_rebalance = false;
+
+    for &source in &config.approved_sources {
+        let target_pct = *config.source_weights.get(&source).unwrap_or(&0);
+        let actual_amount: u128 = portfolio
+            .allocations
+            .iter()
+            .filter(|a| a.source == source)
+            .map(|a| a.amount)
+            .sum();
+        let actual_pct = (actual_amount as f64 / total as f64 * 100.0) as u8;
+        let drift = actual_pct as i16 - target_pct as i16;
+
+        if drift.unsigned_abs() > drift_threshold_pct as u16 {
+            needs_rebalance = true;
+        }
+
+        drifts.push(DriftInfo {
+            adapter_name: adapter_name_for(source),
+            target_pct,
+            actual_pct,
+            drift_pct: drift,
+        });
+    }
+
+    let reasoning = if needs_rebalance {
+        format!(
+            "Portfolio drift exceeds {}% threshold, rebalance recommended",
+            drift_threshold_pct
+        )
+    } else {
+        format!(
+            "All allocations within {}% drift threshold",
+            drift_threshold_pct
+        )
+    };
+
+    RebalanceRecommendation {
+        needs_rebalance,
+        drifts,
+        reasoning,
     }
 }

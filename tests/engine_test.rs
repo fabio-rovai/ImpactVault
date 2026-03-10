@@ -278,6 +278,65 @@ fn test_weighted_allocation_respects_concentration_limit() {
     assert!(sov.amount <= 8_000);
 }
 
+// --- Rebalance tests ---
+
+#[test]
+fn test_rebalance_needed_when_drift_exceeds_threshold() {
+    let mut weights = HashMap::new();
+    weights.insert(RiskSpectrum::Sovereign, 50);
+    weights.insert(RiskSpectrum::StablecoinSavings, 50);
+    let config = VaultConfig {
+        approved_sources: vec![RiskSpectrum::Sovereign, RiskSpectrum::StablecoinSavings],
+        source_weights: weights,
+        ..VaultConfig::default()
+    };
+    let mut portfolio = Portfolio::new();
+    portfolio.total_deposited = 10_000;
+    portfolio.allocations = vec![
+        Allocation {
+            source: RiskSpectrum::Sovereign,
+            adapter_name: "sovereign_bond".into(),
+            amount: 7_000,
+        },
+        Allocation {
+            source: RiskSpectrum::StablecoinSavings,
+            adapter_name: "aave_savings".into(),
+            amount: 3_000,
+        },
+    ];
+    let result = check_rebalance(&config, &portfolio, 10);
+    assert!(result.needs_rebalance);
+    assert!(!result.drifts.is_empty());
+}
+
+#[test]
+fn test_rebalance_not_needed_within_threshold() {
+    let mut weights = HashMap::new();
+    weights.insert(RiskSpectrum::Sovereign, 50);
+    weights.insert(RiskSpectrum::StablecoinSavings, 50);
+    let config = VaultConfig {
+        approved_sources: vec![RiskSpectrum::Sovereign, RiskSpectrum::StablecoinSavings],
+        source_weights: weights,
+        ..VaultConfig::default()
+    };
+    let mut portfolio = Portfolio::new();
+    portfolio.total_deposited = 10_000;
+    portfolio.allocations = vec![
+        Allocation {
+            source: RiskSpectrum::Sovereign,
+            adapter_name: "sovereign_bond".into(),
+            amount: 5_200,
+        },
+        Allocation {
+            source: RiskSpectrum::StablecoinSavings,
+            adapter_name: "aave_savings".into(),
+            amount: 4_800,
+        },
+    ];
+    let result = check_rebalance(&config, &portfolio, 10);
+    assert!(!result.needs_rebalance);
+}
+
 // --- Task 6: Derisking tests ---
 
 #[test]

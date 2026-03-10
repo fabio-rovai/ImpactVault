@@ -78,6 +78,7 @@ async fn test_full_pipeline_healthy() {
         concentration_limit: 60,
         derisking_health_threshold: 0.5,
         auto_derisk_enabled: true,
+        source_weights: std::collections::HashMap::new(),
     };
 
     // 2. Create adapters
